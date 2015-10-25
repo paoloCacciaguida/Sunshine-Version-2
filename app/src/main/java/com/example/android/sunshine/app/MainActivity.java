@@ -1,19 +1,9 @@
 package com.example.android.sunshine.app;
 
 import android.support.v7.app.ActionBarActivity;
-import android.support.v4.app.Fragment;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -24,7 +14,7 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
+                    .add(R.id.container, new ForecastFragment())
                     .commit();
         }
     }
@@ -51,53 +41,4 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
-
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-
-            // Create array of strings containing fake forecast data
-            String[] fakeForecastArray = {
-                    "Today - sunny - 20/23",
-                    "Sunday - sunny - 20/23",
-                    "Monday - cloudy - 20/23",
-                    "Tuesday - storm - 10/13",
-                    "Wednesday - sunny - 20/23",
-                    "Thursday - cloudy - 20/23",
-                    "Friday - the perfect storm - -40/-13"
-            };
-            // Create list with fake forecast data
-            List<String> fakeForecasts = new ArrayList<>(
-                    Arrays.asList(fakeForecastArray)
-            );
-
-            // Create adapter for array of strings
-            ArrayAdapter<String> forecastArrayAdapter = new ArrayAdapter<>(
-                    // Current context: the fragment's parent activity
-                    getActivity(),
-                    // ID of list item layout
-                    R.layout.list_item_forecast,
-                    // ID of text view within the layout
-                    R.id.list_item_forecast_textview,
-                    // list of data
-                    fakeForecasts
-            );
-
-            // Bind the adapter to the list view
-            ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-            listView.setAdapter(forecastArrayAdapter);
-
-
-
-            return rootView;
-        }
-    }
 }
