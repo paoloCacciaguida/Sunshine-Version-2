@@ -4,7 +4,6 @@
     android:id="@+id/list_item_forecast_textview"
     android:minHeight="?android:attr/listPreferredItemHeight"
     android:text="textview"
-    android:background="#989696"
     android:gravity="center_vertical">
 
 </TextView>
