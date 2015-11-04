@@ -22,7 +22,6 @@ public class WeatherDataParser {
      */
     public static double getMaxTemperatureForDay(String weatherJsonStr, int dayIndex)
             throws JSONException {
-        // TODO: add parsing code here
         JSONObject jsonObj = new JSONObject(weatherJsonStr);
         // Get array of week forecast
         JSONArray jsonArr = jsonObj.getJSONArray("list");
