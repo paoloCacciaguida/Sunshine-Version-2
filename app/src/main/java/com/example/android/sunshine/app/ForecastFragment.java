@@ -1,14 +1,24 @@
 package com.example.android.sunshine.app;
 
+import android.app.LauncherActivity;
+import android.content.Context;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
+
+import org.json.JSONException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -25,7 +35,40 @@ import java.util.List;
  * A placeholder fragment containing a simple view.
  */
 public class ForecastFragment extends Fragment{
+    private ArrayAdapter<String> mForecastAdapter;
+
     public ForecastFragment() {
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState){
+        super.onCreate(savedInstanceState);
+        // Add line to allow handling of menu events
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu (Menu menu, MenuInflater inflater){
+        // Inflate the menu; this adds items to the action bar if it is present.
+        inflater.inflate(R.menu.forecast_fragment, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_refresh) {
+            String city = "25014,ITA";
+            FetchWeatherTask weatherTask = new FetchWeatherTask();
+            weatherTask.execute(city);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -49,7 +92,7 @@ public class ForecastFragment extends Fragment{
         );
 
         // Create adapter for array of strings
-        ArrayAdapter<String> forecastArrayAdapter = new ArrayAdapter<>(
+        mForecastAdapter = new ArrayAdapter<>(
                 // Current context: the fragment's parent activity
                 getActivity(),
                 // ID of list item layout
@@ -62,18 +105,37 @@ public class ForecastFragment extends Fragment{
 
         // Bind the adapter to the list view
         ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-        listView.setAdapter(forecastArrayAdapter);
+        listView.setAdapter(mForecastAdapter);
 
 
+        // Attach listener to display toast message
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                String selectecForecast = mForecastAdapter.getItem(position);
+                int duration = Toast.LENGTH_SHORT;
+
+                Toast toast = Toast.makeText(getActivity(), selectecForecast, duration);
+                toast.show();
+            }
+        });
 
 
         return rootView;
     }
 
-    private class FetchWeatherTask extends AsyncTask<String, Void, String> {
+    private class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
+
+        private final String QUERY_PARAM = "q";
+        private final String FORMAT_PARAM = "mode";
+        private final String UNITS_PARAM = "units";
+        private final String DAYS_PARAM = "cnt";
+        private final String APPID_PARAM = "APPID";
+
+
         @Override
-        protected String doInBackground(String... strings) {
+        protected String[] doInBackground(String... strings) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -82,17 +144,38 @@ public class ForecastFragment extends Fragment{
             // Will contain the raw JSON response as a string.
             String forecastJsonStr = null;
 
+            // Will contain an a string description of each day's forecast
+            String[] realForecastsArray = null;
+
+            // Determine postCode based on input parameter
+            String postCode = "94043"; //default
+            if (strings.length > 0 && strings[0] != null){
+                postCode = strings[0];
+            }
+
+            // Build URL using Uri Builder
+            Uri.Builder uriBuilder = new Uri.Builder();
+            uriBuilder.scheme("http");
+            uriBuilder.authority("api.openweathermap.org");
+            uriBuilder.appendPath("data/2.5/forecast/daily");
+            uriBuilder.appendQueryParameter(QUERY_PARAM, postCode);
+            uriBuilder.appendQueryParameter(FORMAT_PARAM, "json");
+            uriBuilder.appendQueryParameter(UNITS_PARAM, "metric");
+            uriBuilder.appendQueryParameter(DAYS_PARAM, "7");
+
+            Uri builtUri = uriBuilder.build();
+
             try {
                 // Construct the URL for the OpenWeatherMap query
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/daily?q=94043&mode=json&units=metric&cnt=7");
-
+                URL url = new URL(builtUri.toString());
+Log.v(LOG_TAG,"Built URL: " + url);
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
                 urlConnection.connect();
-
+Log.v(LOG_TAG,"Connection established");
                 // Read the input stream into a String
                 InputStream inputStream = urlConnection.getInputStream();
                 StringBuffer buffer = new StringBuffer();
@@ -101,7 +184,7 @@ public class ForecastFragment extends Fragment{
                     return null;
                 }
                 reader = new BufferedReader(new InputStreamReader(inputStream));
-
+Log.v(LOG_TAG,"Buffered reader created");
                 String line;
                 while ((line = reader.readLine()) != null) {
                     // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
@@ -115,6 +198,8 @@ public class ForecastFragment extends Fragment{
                     return null;
                 }
                 forecastJsonStr = buffer.toString();
+Log.v(LOG_TAG,"Weather API response:");
+Log.v(LOG_TAG,forecastJsonStr);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping
@@ -133,7 +218,29 @@ public class ForecastFragment extends Fragment{
                 }
             }
 
-            return null;
+            try {
+                realForecastsArray = WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,7);
+                Log.v(LOG_TAG, Arrays.toString(realForecastsArray));
+            } catch (JSONException e) {
+                Log.e(LOG_TAG, "Error parsing JSON response");
+                return null;
+            }
+
+            return realForecastsArray;
+        }
+
+        @Override
+        protected void onPostExecute(String[] strings) {
+            mForecastAdapter.clear();
+            for (String item : strings){
+                mForecastAdapter.add(item);
+            }
+            // mForecastAdapter.addAll(realForecasts);
+
+            // The view is updated without the need to call mForecastAdapter.notifyDataSetChanged();
+            // because the add method of array adapter already does it internally.
+
+            super.onPostExecute(strings);
         }
     }
 }
