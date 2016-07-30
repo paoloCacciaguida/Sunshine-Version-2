@@ -1,5 +1,8 @@
 package com.example.android.sunshine.app;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.format.Time;
 import android.util.Log;
 
@@ -8,12 +11,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.text.StringCharacterIterator;
 
 /**
  * Created by Paolo Admin on 28/10/2015.
  */
 public class WeatherDataParser {
-
+    final static String LOG_TAG = WeatherDataParser.class.getSimpleName();
     /**
      * Given a string of the form returned by the api call:
      * http://api.openweathermap.org/data/2.5/forecast/daily?q=94043&mode=json&units=metric&cnt=7
@@ -44,7 +48,16 @@ public class WeatherDataParser {
     /**
      * Prepare the weather high/lows for presentation.
      */
-    private static String formatHighLows(double high, double low) {
+    private static String formatHighLows(double high, double low, String unitType, Context context) {
+        if (unitType.equals(context.getString(R.string.pref_units_imperial))){
+            // Conversion to Fahrenheit
+            high = (high * 1.8) + 32;
+            low = (low * 1.8) + 32;
+        }
+        else if (!unitType.equals(context.getString(R.string.pref_units_metric))){
+            Log.d(LOG_TAG,"Unit type not found " + unitType + " - will use default unit");
+        }
+
         // For presentation, assume the user doesn't care about tenths of a degree.
         long roundedHigh = Math.round(high);
         long roundedLow = Math.round(low);
@@ -59,10 +72,10 @@ public class WeatherDataParser {
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    public static String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+    public static String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, Context context)
             throws JSONException {
 
-        final String LOG_TAG = WeatherDataParser.class.getSimpleName();
+
         // These are the names of the JSON objects that need to be extracted.
         final String OWM_LIST = "list";
         final String OWM_WEATHER = "weather";
@@ -92,6 +105,10 @@ public class WeatherDataParser {
         dayTime = new Time();
 
         String[] resultStrs = new String[numDays];
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        String unitType = sharedPrefs.getString(context.getString(R.string.pref_key_units), context.getString(R.string.pref_units_metric));
+
         for(int i = 0; i < weatherArray.length(); i++) {
             // For now, using the format "Day, description, hi/low"
             String day;
@@ -119,7 +136,7 @@ public class WeatherDataParser {
             double high = temperatureObject.getDouble(OWM_MAX);
             double low = temperatureObject.getDouble(OWM_MIN);
 
-            highAndLow = formatHighLows(high, low);
+            highAndLow = formatHighLows(high, low, unitType, context);
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
 

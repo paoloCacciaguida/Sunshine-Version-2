@@ -243,7 +243,7 @@ public class ForecastFragment extends Fragment{
             }
 
             try {
-                realForecastsArray = WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,numDays);
+                realForecastsArray = WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,numDays, getActivity());
                 Log.v(LOG_TAG, Arrays.toString(realForecastsArray));
             } catch (JSONException e) {
                 Log.e(LOG_TAG, "Error parsing JSON response");

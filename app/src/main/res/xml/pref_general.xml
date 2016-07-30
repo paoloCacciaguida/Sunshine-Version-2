@@ -11,6 +11,16 @@
         android:capitalize="words"
         android:singleLine="true"
         android:maxLines="1" />
+    <ListPreference
+        android:key="@string/pref_key_units"
+
+        android:title="@string/pref_title_units"
+        android:defaultValue="@string/pref_units_metric"
+        android:entries="@array/pref_units_list_titles"
+        android:entryValues="@array/pref_units_list_values"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        />
     <!--<SwitchPreference
         android:key="example_switch"
         android:title="@string/pref_title_social_recommendations"
