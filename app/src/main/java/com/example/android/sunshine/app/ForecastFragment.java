@@ -2,9 +2,12 @@ package com.example.android.sunshine.app;
 
 import android.app.LauncherActivity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -48,6 +51,12 @@ public class ForecastFragment extends Fragment{
     }
 
     @Override
+    public void onStart(){
+        super.onStart();
+        updateWeather();
+    }
+
+    @Override
     public void onCreateOptionsMenu (Menu menu, MenuInflater inflater){
         // Inflate the menu; this adds items to the action bar if it is present.
         inflater.inflate(R.menu.forecast_fragment, menu);
@@ -62,13 +71,19 @@ public class ForecastFragment extends Fragment{
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_refresh) {
-            String city = "25014,ITA";
-            FetchWeatherTask weatherTask = new FetchWeatherTask();
-            weatherTask.execute(city);
+            updateWeather();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void updateWeather() {
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String city = sharedPrefs.getString(getString(R.string.pref_key_location), getString(R.string.pref_default_location));
+
+        FetchWeatherTask weatherTask = new FetchWeatherTask();
+        weatherTask.execute(city);
     }
 
     @Override
@@ -78,13 +93,13 @@ public class ForecastFragment extends Fragment{
 
         // Create array of strings containing fake forecast data
         String[] fakeForecastArray = {
-                "Today - sunny - 20/23",
-                "Sunday - sunny - 20/23",
-                "Monday - cloudy - 20/23",
-                "Tuesday - storm - 10/13",
-                "Wednesday - sunny - 20/23",
-                "Thursday - cloudy - 20/23",
-                "Friday - the perfect storm - -40/-13"
+//                "Today - sunny - 20/23",
+//                "Sunday - sunny - 20/23",
+//                "Monday - cloudy - 20/23",
+//                "Tuesday - storm - 10/13",
+//                "Wednesday - sunny - 20/23",
+//                "Thursday - cloudy - 20/23",
+//                "Friday - the perfect storm - -40/-13"
         };
         // Create list with fake forecast data
         List<String> fakeForecasts = new ArrayList<>(
@@ -112,11 +127,14 @@ public class ForecastFragment extends Fragment{
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                String selectecForecast = mForecastAdapter.getItem(position);
-                int duration = Toast.LENGTH_SHORT;
+                String selectedForecast = mForecastAdapter.getItem(position);
+//                int duration = Toast.LENGTH_SHORT;
+//                Toast toast = Toast.makeText(getActivity(), selectedForecast, duration);
+//                toast.show();
 
-                Toast toast = Toast.makeText(getActivity(), selectecForecast, duration);
-                toast.show();
+                Intent detailIntent = new Intent(getActivity(), DetailActivity.class);
+                detailIntent.putExtra(Intent.EXTRA_TEXT, selectedForecast);
+                startActivity(detailIntent);
             }
         });
 
@@ -144,6 +162,10 @@ public class ForecastFragment extends Fragment{
             // Will contain the raw JSON response as a string.
             String forecastJsonStr = null;
 
+            String format = "json";
+            String units = "metric";
+            int numDays = 7;
+
             // Will contain an a string description of each day's forecast
             String[] realForecastsArray = null;
 
@@ -159,9 +181,11 @@ public class ForecastFragment extends Fragment{
             uriBuilder.authority("api.openweathermap.org");
             uriBuilder.appendPath("data/2.5/forecast/daily");
             uriBuilder.appendQueryParameter(QUERY_PARAM, postCode);
-            uriBuilder.appendQueryParameter(FORMAT_PARAM, "json");
-            uriBuilder.appendQueryParameter(UNITS_PARAM, "metric");
-            uriBuilder.appendQueryParameter(DAYS_PARAM, "7");
+            uriBuilder.appendQueryParameter(FORMAT_PARAM, format);
+            uriBuilder.appendQueryParameter(UNITS_PARAM, units);
+            uriBuilder.appendQueryParameter(DAYS_PARAM, Integer.toString(numDays));
+            // API Key to access OpenWeatherMap API: DO NOT push in public repository
+
 
             Uri builtUri = uriBuilder.build();
 
@@ -170,12 +194,12 @@ public class ForecastFragment extends Fragment{
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
                 URL url = new URL(builtUri.toString());
-Log.v(LOG_TAG,"Built URL: " + url);
+//Log.v(LOG_TAG,"Built URL: " + url);
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
                 urlConnection.connect();
-Log.v(LOG_TAG,"Connection established");
+//Log.v(LOG_TAG,"Connection established");
                 // Read the input stream into a String
                 InputStream inputStream = urlConnection.getInputStream();
                 StringBuffer buffer = new StringBuffer();
@@ -184,7 +208,7 @@ Log.v(LOG_TAG,"Connection established");
                     return null;
                 }
                 reader = new BufferedReader(new InputStreamReader(inputStream));
-Log.v(LOG_TAG,"Buffered reader created");
+//Log.v(LOG_TAG,"Buffered reader created");
                 String line;
                 while ((line = reader.readLine()) != null) {
                     // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
@@ -198,8 +222,8 @@ Log.v(LOG_TAG,"Buffered reader created");
                     return null;
                 }
                 forecastJsonStr = buffer.toString();
-Log.v(LOG_TAG,"Weather API response:");
-Log.v(LOG_TAG,forecastJsonStr);
+//Log.v(LOG_TAG,"Weather API response:");
+//Log.v(LOG_TAG,forecastJsonStr);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping
@@ -219,7 +243,7 @@ Log.v(LOG_TAG,forecastJsonStr);
             }
 
             try {
-                realForecastsArray = WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,7);
+                realForecastsArray = WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,numDays);
                 Log.v(LOG_TAG, Arrays.toString(realForecastsArray));
             } catch (JSONException e) {
                 Log.e(LOG_TAG, "Error parsing JSON response");
@@ -231,14 +255,17 @@ Log.v(LOG_TAG,forecastJsonStr);
 
         @Override
         protected void onPostExecute(String[] strings) {
-            mForecastAdapter.clear();
-            for (String item : strings){
-                mForecastAdapter.add(item);
-            }
-            // mForecastAdapter.addAll(realForecasts);
+            if (strings != null){
+                mForecastAdapter.clear();
+                for (String item : strings){
+                    mForecastAdapter.add(item);
+                }
+                // mForecastAdapter.addAll(realForecasts);
 
-            // The view is updated without the need to call mForecastAdapter.notifyDataSetChanged();
-            // because the add method of array adapter already does it internally.
+                // The view is updated without the need to call mForecastAdapter.notifyDataSetChanged();
+                // because the add method of array adapter already does it internally.
+
+            }
 
             super.onPostExecute(strings);
         }
