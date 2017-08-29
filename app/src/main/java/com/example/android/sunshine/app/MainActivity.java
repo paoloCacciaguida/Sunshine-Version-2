@@ -1,10 +1,14 @@
 package com.example.android.sunshine.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -41,7 +45,34 @@ public class MainActivity extends ActionBarActivity {
             return true;
         }
 
+        if (id == R.id.action_show_location) {
+
+            return showLocationOnMap();
+        }
+
         return super.onOptionsItemSelected(item);
+    }
+
+    protected boolean showLocationOnMap(){
+        Intent locationIntent = new Intent(Intent.ACTION_VIEW);
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String location = sharedPrefs.getString(getString(R.string.pref_key_location), getString(R.string.pref_default_location));
+        String uriString = "geo:0,0?q=" + Uri.encode(location);
+        Uri geoLocation = Uri.parse(uriString).buildUpon().build();
+
+        locationIntent.setData(geoLocation);
+        if (locationIntent.resolveActivity(getPackageManager()) != null){
+            startActivity(locationIntent);
+            return true;
+        }
+        else {
+            int duration = Toast.LENGTH_SHORT;
+                Toast toast = Toast.makeText(this, "No maps app found", duration);
+                toast.show();
+            return false;
+        }
+
     }
 
 }
